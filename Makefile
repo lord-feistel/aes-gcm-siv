@@ -29,10 +29,13 @@ CC	 		= gcc
 FLAGS		= -g -c -Wall
 LIBRARIES	= -lcrypto
 LFLAGS		= 
+ANALIZER	= valgrind	
 
 
 all: $(OBJS)
 	$(CC) -g $(OBJS) -o $(OUT) $(LIBRARIES) $(LFLAGS) 
+	$(ANALIZER) ./$(OUT)
+
 
 aes_gcm_siv.o: aes_gcm_siv.c
 	$(CC) $(FLAGS) aes_gcm_siv.c $(LIBRARIES)
@@ -42,5 +45,3 @@ usage.o: usage.c
 
 clean:
 	rm -f $(OBJS) $(OUT)
-
-

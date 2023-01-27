@@ -26,9 +26,11 @@ SOFTWARE.
 
 #include"aes_gcm_siv.h"
 
+// #define DEBUG
+
 #ifdef DEBUG
 
-void print_stuff(unsigned char * buff , int size)
+void print_stuff(uint8_t * buff , int size)
 {
     for(int i = 0 ; i < size; i++)
               printf("%x ", buff[i]);
@@ -130,7 +132,7 @@ void galois_field_128_bits_mul(uint64_t* mul_operator_1, uint64_t* mul_operator_
 	op4[0] ^= op2[0];
 	op4[1] ^= op2[1];
 	
-  mul(MASK, op1,op2,0x01);
+  mul(MASK, op1,op2,1);
 
 	((uint32_t*) op3)[0] = ((uint32_t*) op1)[2];
 	((uint32_t*) op3)[1] = ((uint32_t*) op1)[3];
@@ -140,7 +142,7 @@ void galois_field_128_bits_mul(uint64_t* mul_operator_1, uint64_t* mul_operator_
 	op1[0] = op2[0] ^ op3[0];
 	op1[1] = op2[1] ^ op3[1];
 
-  mul(MASK,op1,op2,0x01);
+  mul(MASK,op1,op2,1);
   ((uint32_t*)op3)[0] = ((uint32_t*)op1)[2];
 	((uint32_t*)op3)[1] = ((uint32_t*)op1)[3];
 	((uint32_t*)op3)[2] = ((uint32_t*)op1)[0];
@@ -167,7 +169,7 @@ void POLYVAL(uint64_t* input, uint64_t* H, uint64_t len, uint64_t* result)
   tmp_res[DWORD_HIGH] = result[DWORD_HIGH];
 
 	int i;
-	int blocks = len/16;
+	int blocks = len/AES_BLOCK_SIZE;
 	if (blocks == 0) return;
 	
 	for (i = 0; i < blocks; i++) {
@@ -186,11 +188,11 @@ void POLYVAL(uint64_t* input, uint64_t* H, uint64_t len, uint64_t* result)
 }
  
 
-unsigned char *  gen_key(EVP_CIPHER_CTX *ctx, int ctrStart, int ctrEnd, unsigned char * nonce) {
+uint8_t *  gen_key(EVP_CIPHER_CTX *ctx, int ctrStart, int ctrEnd, uint8_t * nonce) {
 
    
-  unsigned char * key = (unsigned char *)malloc((ctrEnd - ctrStart + 1) * 8);
-  unsigned char block [AES_BLOCK_SIZE];
+  uint8_t * key = (uint8_t *)malloc((ctrEnd - ctrStart + 1) * 8);
+  uint8_t   block [AES_BLOCK_SIZE];
 
 
 
@@ -209,7 +211,7 @@ unsigned char *  gen_key(EVP_CIPHER_CTX *ctx, int ctrStart, int ctrEnd, unsigned
   }
 
 
-EVP_CIPHER_CTX * init_crypto(unsigned char * key, const EVP_CIPHER * MODE, unsigned char * iv)
+EVP_CIPHER_CTX * init_crypto(uint8_t * key, const EVP_CIPHER * MODE, uint8_t * iv)
 {
 
     EVP_CIPHER_CTX *ctx;
@@ -227,11 +229,11 @@ EVP_CIPHER_CTX * init_crypto(unsigned char * key, const EVP_CIPHER * MODE, unsig
     return ctx;
 }
 
-  unsigned char *  hash( unsigned char  * enc_key, 
-                         unsigned char  * auth_key,
-                         unsigned char  * nonce, 
-                         unsigned char  * plaintext, 
-                         unsigned char  * AAD,
+  uint8_t *  hash( uint8_t  * enc_key, 
+                         uint8_t  * auth_key,
+                         uint8_t  * nonce, 
+                         uint8_t  * plaintext, 
+                         uint8_t  * AAD,
                          uint64_t         MSG_len,
                          uint64_t          AAD_len ) 
   {
@@ -240,10 +242,10 @@ EVP_CIPHER_CTX * init_crypto(unsigned char * key, const EVP_CIPHER * MODE, unsig
 	uint64_t msg_pad = 0;
 	uint64_t aad_pad = 0;
   uint64_t POLYV[DWORD_128_BITS] = {0};
-  unsigned char pol [AES_BLOCK_SIZE]= {0};
+  uint8_t pol [AES_BLOCK_SIZE]= {0};
   
   int len = 16 ;
-  uint8_t *  tag = (unsigned char *) malloc(AES_GCM_TAG_SIZE);
+  uint8_t *  tag = (uint8_t *) malloc(AES_GCM_TAG_SIZE);
 
 
   if ((AAD_len % AES_BLOCK_SIZE) != 0) {
@@ -263,8 +265,8 @@ EVP_CIPHER_CTX * init_crypto(unsigned char * key, const EVP_CIPHER * MODE, unsig
 
 #ifdef DEBUG
   printf("Polynomials:\n");
-  printf("POLYVAL[0]: %016llx POLYVAL[1]: %016llx \n",POLYV[0], POLYV[1]);
-	printf("LENBLK[0]: %016llx LENBLK[1]: %016llx \n",LENBLK[0], LENBLK[1]);
+  printf("POLYVAL[0]: %016lx POLYVAL[1]: %016lx \n",POLYV[0], POLYV[1]);
+	printf("LENBLK[0]: %016lx LENBLK[1]: %016lx \n",LENBLK[0], LENBLK[1]);
 #endif
  
   EVP_CIPHER_CTX * tag_encryption_ctx = init_crypto(enc_key, EVP_aes_128_ecb(),NULL);  
@@ -306,9 +308,9 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
    
     EVP_CIPHER_CTX * ecb_ctx;
     EVP_CIPHER_CTX * ctr_ctx;
-    unsigned char * tag = NULL; 
+    uint8_t * tag = NULL; 
 
-    unsigned char adjusted_nonce[AES_BLOCK_SIZE] = {0};
+    uint8_t adjusted_nonce[AES_BLOCK_SIZE] = {0};
 
     memset(adjusted_nonce , 0, AES_BLOCK_SIZE);
     memcpy(adjusted_nonce + 4, params->nonce, AES_NONCE_SIZE);
@@ -316,7 +318,7 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
     ecb_ctx = init_crypto(params->key, EVP_aes_128_ecb(),NULL);
 
     // generates key for the hash
-    unsigned char * hash_key = gen_key(ecb_ctx, 0, 1, adjusted_nonce);
+    uint8_t * hash_key = gen_key(ecb_ctx, 0, 1, adjusted_nonce);
 
 #ifdef  DEBUG    
     printf("hash key:\n");
@@ -324,7 +326,7 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
 #endif
 
     // generates the key for the encryption
-    unsigned char * encryption_key = gen_key(ecb_ctx, 2, 3, adjusted_nonce);
+    uint8_t * encryption_key = gen_key(ecb_ctx, 2, 3, adjusted_nonce);
 #ifdef  DEBUG       
     printf("cryptography key:\n");
     print_stuff(encryption_key, AES_BLOCK_SIZE);
@@ -359,6 +361,7 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
         ctr_ctx = init_crypto(encryption_key, EVP_aes_128_ctr(), tag);
         EVP_EncryptUpdate(ctr_ctx, msg, &len,  params->data, len);
         EVP_EncryptFinal_ex(ctr_ctx, msg + len, &len);
+        EVP_CIPHER_CTX_free(ctr_ctx);
     }else{
 
         EVP_CIPHER_CTX * ctx_dec = EVP_CIPHER_CTX_new();
@@ -373,6 +376,9 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
                     params->aad, 
                     params->data_len, 
                     params->aad_len);
+
+
+        EVP_CIPHER_CTX_free(ctx_dec);
     }
 
 #ifdef  DEBUG  
