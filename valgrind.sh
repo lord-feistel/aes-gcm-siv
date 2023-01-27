@@ -1,0 +1,1 @@
+valgrind --leak-check=full --show-leak-kinds=all --leak-resolution=high --track-origins=yes --vgdb=yes ./usage
