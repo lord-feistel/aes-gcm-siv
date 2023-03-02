@@ -70,7 +70,7 @@ int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce)
 
 
     printf("key:\t\t");
-    print_buffer(params.key, AES_NONCE_SIZE);
+    print_buffer(params.key, AES_128_KEYSIZE);
 
     printf("data:\t\t");
     print_buffer(params.data, params.data_len);
@@ -103,7 +103,7 @@ int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce)
 
     assert (memcmp(data,params.data,data_len) == 0); 
     free(params.data);
- 
+
     return 0;
 
 

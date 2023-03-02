@@ -357,6 +357,8 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
                    params->data_len, 
                    params->aad_len);
 
+        tag[AES_GCM_TAG_SIZE -1] |= 128;
+
 
         ctr_ctx = init_crypto(encryption_key, EVP_aes_128_ctr(), tag);
         EVP_EncryptUpdate(ctr_ctx, msg, &len,  params->data, len);
@@ -376,6 +378,10 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
                     params->aad, 
                     params->data_len, 
                     params->aad_len);
+      
+            
+        tag[AES_GCM_TAG_SIZE -1] |= 128;  
+
 
 
         EVP_CIPHER_CTX_free(ctx_dec);
