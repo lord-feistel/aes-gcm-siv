@@ -26,18 +26,16 @@ SOFTWARE.
 
 #include"aes_gcm_siv.h"
 
-// #define DEBUG
 
-#ifdef DEBUG
 
 void print_stuff(uint8_t * buff , int size)
 {
     for(int i = 0 ; i < size; i++)
               printf("%x ", buff[i]);
-    printf("\n");
+    printf("\n\n");
 }
 
-#endif
+
 
 void convert_to_counter(uint8_t offset, uint8_t *buffer) 
 {
@@ -287,17 +285,7 @@ EVP_CIPHER_CTX * init_crypto(uint8_t * key, const EVP_CIPHER * MODE, uint8_t * i
     
   ((uint8_t*)pol)[AES_BLOCK_SIZE - 1] &= ~0x80;
 
-#ifdef  DEBUG  
-  printf("After xor with nonce:\n");
-  print_stuff(pol,16);   
-#endif
-
   EVP_EncryptUpdate(tag_encryption_ctx, tag, &len, pol, len);
-
-#ifdef DEBUG  
-  printf("tag:\n");
-  print_stuff(tag,16);
-#endif
 
   return tag;
 
@@ -320,21 +308,17 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
     // generates key for the hash
     uint8_t * hash_key = gen_key(ecb_ctx, 0, 1, adjusted_nonce);
 
-#ifdef  DEBUG    
+    printf("aes gcm siv key derivation results:\n");
     printf("hash key:\n");
     print_stuff(hash_key,AES_BLOCK_SIZE); 
-#endif
 
     // generates the key for the encryption
     uint8_t * encryption_key = gen_key(ecb_ctx, 2, 3, adjusted_nonce);
-#ifdef  DEBUG       
+      
     printf("cryptography key:\n");
     print_stuff(encryption_key, AES_BLOCK_SIZE);
-#endif
 
     EVP_CIPHER_CTX_free(ecb_ctx);
-
-    
 
 
 
@@ -387,10 +371,6 @@ void aes_gcm_siv( AES_GCM_SIV_PARAM * params ,  OPERATION operation)
         EVP_CIPHER_CTX_free(ctx_dec);
     }
 
-#ifdef  DEBUG  
-    printf("encrypted text:\n");
-    print_stuff(msg,AES_BLOCK_SIZE);
-#endif
 
     //clean up
     

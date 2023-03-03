@@ -21,27 +21,28 @@
 # SOFTWARE.
 
 
-OBJS		= aes_gcm_siv.o usage.o
-SOURCE		= aes_gcm_siv.c usage.c
+OBJS		= aes_gcm_siv.o test.o main.o
+SOURCE		= aes_gcm_siv.c usage.c main.c
 HEADER		= 
-OUT			= usage
+OUT			= tester
 CC	 		= gcc
 FLAGS		= -g -c -Wall
 LIBRARIES	= -lcrypto
 LFLAGS		= 
-ANALIZER	= valgrind	
 
 
 all: $(OBJS)
 	$(CC) -g $(OBJS) -o $(OUT) $(LIBRARIES) $(LFLAGS) 
-	$(ANALIZER) ./$(OUT)
 
 
 aes_gcm_siv.o: aes_gcm_siv.c
 	$(CC) $(FLAGS) aes_gcm_siv.c $(LIBRARIES)
 
-usage.o: usage.c
-	$(CC) $(FLAGS) usage.c $(LIBRARIES)
+test.o: test.c
+	$(CC) $(FLAGS) test.c $(LIBRARIES)
+
+main.o: main.c
+	$(CC) $(FLAGS) main.c $(LIBRARIES)	
 
 clean:
 	rm -f $(OBJS) $(OUT)

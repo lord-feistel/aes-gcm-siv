@@ -29,6 +29,7 @@ SOFTWARE.
 #include <openssl/err.h>
 #include <stdint.h>
 #include <string.h>
+#include "test.h"
 
 //used on tests
 #include <assert.h>
@@ -36,19 +37,16 @@ SOFTWARE.
 #include "aes_gcm_siv.h"
 
 
-#define VERBOSE
-
-#ifdef VERBOSE
 void print_buffer(uint8_t * buff , int size)
 {
     for(int i = 0 ; i < size; i++)
               printf("%x ", buff[i]);
     printf("\n");
 }
-#endif
 
 
-int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce)
+
+int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce, uint8_t * aad, size_t aad_len)
 {
 
     AES_GCM_SIV_PARAM params;
@@ -57,13 +55,27 @@ int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce)
     memcpy(params.key, key,AES_128_KEYSIZE);
     params.data_len = data_len;
 
+
+
     params.data = (uint8_t*)malloc(params.data_len * sizeof(uint8_t));
 
     memcpy(params.data, data, params.data_len);
-    params.aad_len = 0;
-    params.aad = NULL;
 
-#ifdef VERBOSE
+
+    params.aad_len = aad_len;
+
+    if(params.aad_len == 0)
+    {
+        params.aad = NULL;
+    }
+    else
+    {
+        params.aad = (uint8_t*)malloc(params.aad_len * sizeof(uint8_t));
+        memcpy(params.aad, aad, params.aad_len);
+    }
+
+
+
     printf("INPUT\n");
     printf("nonce:\t\t");
     print_buffer(params.nonce, AES_NONCE_SIZE);
@@ -74,30 +86,32 @@ int test(uint8_t * data, uint64_t data_len, uint8_t * key, uint8_t * nonce)
 
     printf("data:\t\t");
     print_buffer(params.data, params.data_len);
-#endif  
+ 
+
+    printf("\nOUTPUT\n");
+
+
 
     //encrypt  
+    printf("\nENCRYPTION...\n\n");
     aes_gcm_siv(&params, ENCRYPT);
-
-#ifdef VERBOSE
-    printf("\nOUTPUT\n");
-    printf("encrypted data:\t");
+    printf("encrypted data:\n");
     print_buffer(params.data, params.data_len);
 
-    printf("tag:\t\t");
+    printf("tag:\n");
     print_buffer(params.tag,AES_GCM_TAG_SIZE);
-#endif    
+   
+
+    printf("\nDECRYPTION...\n\n");
 
     //decrypt
     aes_gcm_siv(&params, DECRYPT);
-
-#ifdef VERBOSE
-    printf("decrypted data:\t");
+    printf("decrypted data:\n");
     print_buffer(params.data, params.data_len);
-    printf("tag\t\t");
+    printf("tag\n");
     print_buffer(params.tag, AES_GCM_TAG_SIZE);
     printf("\n");
-#endif   
+  
 
 
 
@@ -140,7 +154,7 @@ void TEST_01 ()
     uint8_t key[AES_128_KEYSIZE]   =   {01, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00};
     uint8_t data[16]               =   {01, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00};
     uint8_t nonce[AES_NONCE_SIZE]  =   {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    test(data, sizeof(data), key,nonce);
+    test(data, sizeof(data), key,nonce, NULL, 0);
 }
 
 
@@ -174,16 +188,77 @@ void TEST_02 ()
     uint8_t key[AES_128_KEYSIZE]   =   {01, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00};
     uint8_t data[32]               =   {01, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 02, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00};
     uint8_t nonce[AES_NONCE_SIZE]  =   {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    test(data, sizeof(data), key,nonce);
+    test(data, sizeof(data), key,nonce, NULL, 0);
+
 }
 
 
-int main (void)
+void TEST_03 ()
 {
+
+    //AAD
+
+    /*
     
+        Plaintext (15 bytes) =      0d8c8451178082355c9e940fea2f58
+        AAD (25 bytes) =            2950a70d5a1db2316fd568378da107b5
+                                    2b0da55210cc1c1b0a
+        Key =                       2d4ed87da44102952ef94b02b805249b
+        Nonce =                     ac80e6f61455bfac8308a2d4
+        Record authentication key = 0b00a29a83e7e95b92e3a0783b29f140
+        Record encryption key =     a430c27f285aed913005975c42eed5f3
+        POLYVAL input =             2950a70d5a1db2316fd568378da107b5
+                                    2b0da55210cc1c1b0a00000000000000
+                                    0d8c8451178082355c9e940fea2f5800
+                                    c8000000000000007800000000000000
+        POLYVAL result =            1086ef25247aa41009bbc40871d9b350
+        POLYVAL result XOR nonce =  bc0609d3302f1bbc8ab366dc71d9b350
+   ... and masked =                 bc0609d3302f1bbc8ab366dc71d9b350
+   Tag =                            83b3449b9f39552de99dc214a1190b0b
+   Initial counter =                83b3449b9f39552de99dc214a1190b8b
+   Result (31 bytes) =              c9ff545e07b88a015f05b274540aa183
+                                    b3449b9f39552de99dc214a1190b0b
+    
+    
+    */
 
-    TEST_01();
-    TEST_02();
+	uint8_t nonce[12]   		   	    =   { 0xac, 0x80, 0xe6, 0xf6, 0x14, 0x55, 0xbf, 0xac, 0x83, 0x08, 0xa2, 0xd4 };
+	uint8_t data[15]    		   		=   { 0x0d, 0x8c, 0x84, 0x51, 0x17, 0x80, 0x82, 0x35, 0x5c, 0x9e, 0x94, 0x0f, 0xea, 0x2f, 0x58};
+	uint8_t aad_test[25]				=	{ 0x29, 0x50, 0xa7, 0x0d, 0x5a, 0x1d, 0xb2, 0x31, 0x6f, 0xd5, 0x68, 0x37, 0x8d, 0xa1, 0x07, 0xb5, 0x2b, 0x0d, 0xa5, 0x52, 0x10, 0xcc, 0x1c, 0x1b, 0x0a};
 
-    return 0;
+    uint8_t key[16]   	                =   { 0x2d, 0x4e, 0xd8, 0x7d, 0xa4, 0x41, 0x02, 0x95, 0x2e, 0xf9, 0x4b, 0x02, 0xb8, 0x05, 0x24, 0x9b};
+
+	
+
+
+    
+    test(data, sizeof(data), key,nonce, aad_test, 25);
+
+
+
+
+
+
 }
+
+
+
+// another test that is not in rfc
+
+void TEST_04()
+{
+
+	uint8_t nonce[12]   		   	    =   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+
+	uint8_t data[16]    		   		=   { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+	uint8_t aad [28]				    =	{ 0x00, 0x01, 0x01, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+
+    uint8_t key[16]                     =   {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x0A};
+	   
+    test(data, sizeof(data), key,nonce, aad, sizeof(aad));
+
+
+}
+
+
