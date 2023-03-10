@@ -10,9 +10,9 @@ int main (int argc, char * argv[])
 
 
 
-     // TEST_01();
-     // TEST_02();
-      //TEST_03();
-      TEST_04();
+     TEST_01();
+     TEST_02();
+     TEST_03();
+
 
 }
